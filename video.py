@@ -25,7 +25,6 @@ Create Main file JSON
 
 def mainJson(file, input_folder):
     probe = ffmpeg.probe(file)
-
     json_dict = {
         "duration": float(probe["streams"][0]["duration"]),
         "file size": int(probe["format"]["size"]),
@@ -101,11 +100,15 @@ def splitvideo(file, main_json_file):
     while i < checkpoints:
         checkpoint_number = str(i).zfill(3)
         video = ffmpeg.input(file)
-        video = ffmpeg.trim(chk_start, chk_end)
-        video = ffmpeg.setpts()
-        video = ffmpeg.output(video, folder + "/checkpoints/" + checkpoint_number + file[-3:])
+        video = ffmpeg.trim(stream=video, start=chk_start, end=chk_end)
+        video = ffmpeg.setpts(stream=video, expr="PTS-STARTPTS")
+        video = ffmpeg.output(video, folder + "/checkpoints/" + checkpoint_number + file[-4:])
+        ffmpeg.run(video)
         chk_start = chk_start + checkpoint_duration
-        chk_end = chk_end + checkpoint_duration
+        if chk_end < file_duration:
+            chk_end = chk_end + checkpoint_duration
+        else:
+            chk_end = file_duration
         i = i + 1
 
 

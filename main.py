@@ -20,7 +20,7 @@ print("Put the input file into the input folder.")
 
 GUI_cmd = False
 
-file = "test_files/test_long_file.mp4"
+file = "test_files/test_short_file.mp4"
 if GUI_cmd: file = input("Enter Filename: ")
 file_type = file[-4:]
 
@@ -102,4 +102,4 @@ splitvideo(file, main_json_file)
 # Quality Testing
 
 # Test removal
-shutil.rmtree(input_folder)
+#shutil.rmtree(input_folder)
