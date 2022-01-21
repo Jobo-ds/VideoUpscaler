@@ -141,7 +141,7 @@ def splitVideo(main_json_file):
             print("Video successfully split into checkpoints.")
         updateJSON(main_json_file, "checkpoints video split", True)
     else:
-        print("Video has already been split into video checkpoints")
+        print("Video has already been split into video checkpoints...")
 
 """
 Split a Checkpoint into frames
@@ -276,7 +276,6 @@ def upscaleFrames(main_json_file):
                         if frameNr % 10 == 0: end = time.perf_counter()
                         if frameNr % 10 == 0: avg_process_time_list.append(float(end)-float(start))
                         if frameNr % 49 == 0: update_gui = True
-
                     frameNr = frameNr + 1
                 updateJSON(folder + "/" + checkpoint_number + ".json", "upscale", True)
             i = i + 1
@@ -290,7 +289,7 @@ Merge frames into Checkpoint again
 
 def compileVideo(main_json_file):
     file_info = loadJSON(main_json_file)
-    if not file_info["checkpoints merged"]:
+    if not file_info["checkpoints video merge"]:
         checkpoints = file_info["checkpoints"]
         folder = file_info["folder"]
         i = 0
@@ -299,6 +298,7 @@ def compileVideo(main_json_file):
             video = ffmpeg.input(folder + "/" + "checkpoints/" + checkpoint_number + "/*.jpeg", pattern_type = "glob", framerate = file_info["FPS"])
             video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
             ffmpeg.run(video)
+            updateJSON(folder + "/" + "checkpoints/" + checkpoint_number + ".json", "merge", True)
         updateJSON(main_json_file, "checkpoints video merge", True)
     else:
         print("All checkpoints have already been merged into upscaled video files...")
