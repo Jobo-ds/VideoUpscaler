@@ -249,7 +249,7 @@ def upscaleFrames(main_json_file):
                 frameNr = 0
                 update_gui = True
                 avg_process_time_list = []
-                while frameNr < checkpoint_info["frames"]:
+                while frameNr <= checkpoint_info["frames"]:
                     # Check if frame has already been processed
                     if not path.exists(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg"):
                         if update_gui:
@@ -269,10 +269,12 @@ def upscaleFrames(main_json_file):
                         # Create folder
                         if not path.exists(folder + "/" + checkpoint_number):
                             os.makedirs(folder + "/" + checkpoint_number, exist_ok=False)
+                        if not path.exists(folder + "/" + checkpoint_number + "/upscaled"):
+                            os.makedirs(folder + "/" + checkpoint_number + "/upscaled", exist_ok=False)
                         frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg")
                         if frameNr % 10 == 0: start = time.perf_counter()
                         result = sr.upsample(frame)
-                        cv2.imwrite(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg", result)
+                        cv2.imwrite(folder + "/" + checkpoint_number + "/upscaled/" + str(frameNr) + "-upscale.jpg", result)
                         if frameNr % 10 == 0: end = time.perf_counter()
                         if frameNr % 10 == 0: avg_process_time_list.append(float(end)-float(start))
                         if frameNr % 49 == 0: update_gui = True
@@ -295,7 +297,9 @@ def compileVideo(main_json_file):
         i = 0
         while i < checkpoints:
             checkpoint_number = str(i).zfill(3)
-            video = ffmpeg.input(folder + "/" + "checkpoints/" + checkpoint_number + "/*.jpeg", pattern_type = "glob", framerate = file_info["FPS"])
+            list_test = str(folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/0-upscale.jpg, " +
+                         folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/1-upscale.jpg")
+            video = ffmpeg.input(list_test, pattern_type="glob", framerate = 30)
             video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
             ffmpeg.run(video)
             updateJSON(folder + "/" + "checkpoints/" + checkpoint_number + ".json", "merge", True)
