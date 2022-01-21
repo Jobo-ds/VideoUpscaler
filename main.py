@@ -20,7 +20,7 @@ print("Put the input file into the input folder.")
 
 GUI_cmd = False
 
-file = "test_files/test_short_file.mp4"
+file = "test_files/test_veryshort_file.mp4"
 if GUI_cmd: file = input("Enter Filename: ")
 file_type = file[-4:]
 
@@ -59,6 +59,7 @@ Create Checkpoints
 if file_info["checkpoints"] == 0:
     if file_info["duration"] <= 120: # 2 minutes
         updateJSON(main_json_file, "checkpoints", 1)
+        updateJSON(main_json_file, "avg checkpoint duration", False) # If there is only one checkpoint it's False. Allows for specific treatment.
         print("Very short file detected (< 1 min.). Only using 1 checkpoint.")
     elif file_info["duration"] <= 600: # 10 minutes
         avg_checkpointDuration = 120

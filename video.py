@@ -9,6 +9,8 @@ from cv2 import dnn_superres
 import os
 from os import path
 import time
+import shutil
+from datetime import datetime, timedelta
 
 
 """
@@ -38,8 +40,11 @@ def mainJson(file, input_folder):
         "aspect ratio": str(probe["streams"][0]["display_aspect_ratio"]),
         "checkpoints": 0,
         "checkpoints JSON": False,
+        "checkpoints video split": False,
+        "checkpoints frame split": False,
+        "checkpoints frame upscale": False,
+        "checkpoints video merge": False,
         "avg checkpoint duration" : 0,
-        "checkpoints completed": [],
         "vCodec": str(probe["streams"][0]["codec_name"]),
         "vBitrate": int(probe["streams"][0]["bit_rate"]),
         "FPS": str(probe["streams"][0]["r_frame_rate"]),
@@ -109,24 +114,34 @@ def splitVideo(main_json_file):
     folder = file_info["folder"]
     chk_start = 0
     chk_end = checkpoint_duration
-    i = 0
-    while i < checkpoints:
-        checkpoint_number = str(i).zfill(3)
-        checkpoint_json = loadJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json")
-        if not checkpoint_json["split video"]:
-            video = ffmpeg.input(folder + "/" + file_info["file_id"] + file_info["file type"])
-            video = ffmpeg.trim(stream=video, start=chk_start, end=chk_end)
-            video = ffmpeg.setpts(stream=video, expr="PTS-STARTPTS")
-            video = ffmpeg.output(video, folder + "/checkpoints/" + checkpoint_number + file_info["file type"])
-            ffmpeg.run(video)
-            chk_start = chk_start + checkpoint_duration
-            if chk_end < file_duration:
-                chk_end = chk_end + checkpoint_duration
-            else:
-                chk_end = file_duration
-            updateJSON(folder + "/checkpoints/" + checkpoint_number + ".json", "split video", True)
-        i = i + 1
-    updateJSON(folder + "/checkpoints/" + checkpoint_number + ".json", "split video", True)
+    if not file_info["checkpoints video split"]:
+        i = 0
+        if checkpoint_duration != False:
+            while i < checkpoints:
+                checkpoint_number = str(i).zfill(3)
+                checkpoint_json = loadJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json")
+                if not checkpoint_json["split video"]:
+                    video = ffmpeg.input(folder + "/" + file_info["file_id"] + file_info["file type"])
+                    video = ffmpeg.trim(stream=video, start=chk_start, end=chk_end)
+                    video = ffmpeg.setpts(stream=video, expr="PTS-STARTPTS")
+                    video = ffmpeg.output(video, folder + "/checkpoints/" + checkpoint_number + file_info["file type"])
+                    ffmpeg.run(video)
+                    chk_start = chk_start + checkpoint_duration
+                    if chk_end < file_duration:
+                        chk_end = chk_end + checkpoint_duration
+                    else:
+                        chk_end = file_duration
+                    updateJSON(folder + "/checkpoints/" + checkpoint_number + ".json", "split video", True)
+                i = i + 1
+                updateJSON(folder + "/checkpoints/" + checkpoint_number + ".json", "split video", True)
+                print("Video successfully split into checkpoints.")
+        else:
+            shutil.copy(folder + "/" + file_info["file_id"] + file_info["file type"], folder + "/" + "checkpoints/000" + file_info["file type"])
+            updateJSON(folder + "/checkpoints/" + "000" + ".json", "split video", True)
+            print("Video successfully split into checkpoints.")
+        updateJSON(main_json_file, "checkpoints video split", True)
+    else:
+        print("Video has already been split into video checkpoints")
 
 """
 Split a Checkpoint into frames
@@ -134,30 +149,33 @@ Split a Checkpoint into frames
 
 def splitCheckpoints(main_json_file):
     file_info = loadJSON(main_json_file)
-    i = 0
-    while i < file_info["checkpoints"]:
-        checkpoint_number = str(i).zfill(3)
-        file = file_info["folder"] + "/checkpoints/" + checkpoint_number + file_info["file type"]
-        checkpoint_info = loadJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json")
-        if not checkpoint_info["split frames"]:
-            video = cv2.VideoCapture(file)
-            frameNr = 0
-            print(f"Writing frames from checkpoint {checkpoint_number}")
-            while (True):
-                success, frame = video.read()
-                if success:
-                    if not path.exists(file_info["folder"] + "/checkpoints/" + checkpoint_number):
-                        os.makedirs(file_info["folder"] + "/checkpoints/" + checkpoint_number, exist_ok=False)
-                    cv2.imwrite(file_info["folder"] + "/checkpoints/" + checkpoint_number + "/" + str(frameNr) + ".jpg", frame)
-                    updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", frameNr, False)
-                else:
-                    break
-                frameNr = frameNr + 1
-            updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "split frames", True)
-            updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "frames", frameNr-1)
-        else:
-            print(f"Checkpoint {checkpoint_number} already split into frames.")
-        i = i + 1
+    if not file_info["checkpoints frame split"]:
+        i = 0
+        while i < file_info["checkpoints"]:
+            checkpoint_number = str(i).zfill(3)
+            file = file_info["folder"] + "/checkpoints/" + checkpoint_number + file_info["file type"]
+            checkpoint_info = loadJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json")
+            if not checkpoint_info["split frames"]:
+                video = cv2.VideoCapture(file)
+                frameNr = 0
+                print(f"Writing checkpoint {checkpoint_number} to image frames...")
+                while (True):
+                    success, frame = video.read()
+                    if success:
+                        if not path.exists(file_info["folder"] + "/checkpoints/" + checkpoint_number):
+                            os.makedirs(file_info["folder"] + "/checkpoints/" + checkpoint_number, exist_ok=False)
+                        cv2.imwrite(file_info["folder"] + "/checkpoints/" + checkpoint_number + "/" + str(frameNr) + ".jpg", frame)
+                    else:
+                        break
+                    frameNr = frameNr + 1
+                updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "split frames", True)
+                updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "frames", frameNr-1)
+            else:
+                print(f"Checkpoint {checkpoint_number} already split into frames.")
+            i = i + 1
+        updateJSON(main_json_file, "checkpoints frame split", True)
+    else:
+        print("All checkpoints have already been split into frames...")
 
 """
 Perform Cleaning of frames
@@ -209,43 +227,81 @@ def modelExamples(main_json_file):
 def upscaleFrames(main_json_file):
     # Setup file variables
     file_info = loadJSON(main_json_file)
-    folder = file_info["folder"] + "/" + "checkpoints"
-    checkpoints_total = file_info["checkpoints"]
-    # Setup Model
-    model = "lapsrn"
-    scale = 4
-    modelPath = "models/" + model
-    sr = dnn_superres.DnnSuperResImpl_create()
-    sr.readModel(modelPath)
-    sr.setModel(model, scale)
-    print(f"Upscaling with model : {model} (x{scale})")
-    i = 0
-    while i < checkpoints_total:
-        checkpoint_number = str(i).zfill(3)
-        checkpoint_info = loadJSON(folder + "/" + checkpoint_number + ".json")
-        if checkpoint_info["upscale"] == False:
-            frameNr = 0
-            while frameNr < checkpoint_info["frames"]:
-                if frameNr % 100 == 0:
-                    print(f"Upscaling... Current checkpoint: {checkpoint_number}, next frame: {frameNr}")
-                # Check if frame has already been processed
-                if not path.exists(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg"):
-                    # Create folder
-                    if not path.exists(folder + "/" + checkpoint_number):
-                        os.makedirs(folder + "/" + checkpoint_number, exist_ok=False)
-                    frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg")
-                    result = sr.upsample(frame)
-                    cv2.imwrite(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg", result)
-                frameNr = frameNr + 1
-            updateJSON(folder + "/" + checkpoint_number + ".json", "upscale", True)
-        i = i + 1
-    print("Framess have been upscaled.")
+    if not file_info["checkpoints frame upscale"]:
+        folder = file_info["folder"] + "/" + "checkpoints"
+        checkpoints_total = file_info["checkpoints"]
+        # Setup Model
+        model = "lapsrn"
+        scale = 4
+        modelPath = "models/" + model + "_x4.pb"
+        sr = dnn_superres.DnnSuperResImpl_create()
+        sr.readModel(modelPath)
+        sr.setModel(model, scale)
+        # Set CUDA backend and target to enable GPU inference
+        sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+        sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+        print(f"Upscaling with model : {model} (x{scale})")
+        i = 0
+        while i < checkpoints_total:
+            checkpoint_number = str(i).zfill(3)
+            checkpoint_info = loadJSON(folder + "/" + checkpoint_number + ".json")
+            if checkpoint_info["upscale"] == False:
+                frameNr = 0
+                update_gui = True
+                avg_process_time_list = []
+                while frameNr < checkpoint_info["frames"]:
+                    # Check if frame has already been processed
+                    if not path.exists(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg"):
+                        if update_gui:
+                            now = datetime.now()
+                            current_time = now.strftime("%H:%M:%S")
+                            try:
+                                avg_process_time = round(sum(avg_process_time_list) / len(avg_process_time_list), 3)
+                                time_left = int((checkpoint_info["frames"] - int(frameNr)) * avg_process_time)
+                                time_left = str(timedelta(seconds=time_left))
+                            except:
+                                avg_process_time = "?"
+                                time_left = "?"
+                            print(
+                                f"{current_time}: Upscaling... Current checkpoint: {checkpoint_number}, next frame to process: {frameNr}. Average process time: {avg_process_time} second(s). Time left (H:MM:SS): {time_left}.")
+                            avg_process_time_list = []
+                            update_gui = False
+                        # Create folder
+                        if not path.exists(folder + "/" + checkpoint_number):
+                            os.makedirs(folder + "/" + checkpoint_number, exist_ok=False)
+                        frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg")
+                        if frameNr % 10 == 0: start = time.perf_counter()
+                        result = sr.upsample(frame)
+                        cv2.imwrite(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg", result)
+                        if frameNr % 10 == 0: end = time.perf_counter()
+                        if frameNr % 10 == 0: avg_process_time_list.append(float(end)-float(start))
+                        if frameNr % 49 == 0: update_gui = True
+
+                    frameNr = frameNr + 1
+                updateJSON(folder + "/" + checkpoint_number + ".json", "upscale", True)
+            i = i + 1
+        updateJSON(main_json_file, "checkpoints frame upscale", True)
+    else:
+        print("All frames have already been upscaled...")
 
 """
 Merge frames into Checkpoint again
 """
 
-# Update Checkpoint JSON
+def compileVideo(main_json_file):
+    file_info = loadJSON(main_json_file)
+    if not file_info["checkpoints merged"]:
+        checkpoints = file_info["checkpoints"]
+        folder = file_info["folder"]
+        i = 0
+        while i < checkpoints:
+            checkpoint_number = str(i).zfill(3)
+            video = ffmpeg.input(folder + "/" + "checkpoints/" + checkpoint_number + "/*.jpeg", pattern_type = "glob", framerate = file_info["FPS"])
+            video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
+            ffmpeg.run(video)
+        updateJSON(main_json_file, "checkpoints video merge", True)
+    else:
+        print("All checkpoints have already been merged into upscaled video files...")
 
 """
 Quality Control - Creat JSON of new Checkpoint file)
