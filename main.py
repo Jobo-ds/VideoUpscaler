@@ -74,7 +74,7 @@ if file_info["checkpoints"] == 0:
         print(f"Long file detected (> 10 min.). Using {checkpoints} checkpoints.")
 
 file_info = loadJSON(main_json_file)
-#%%
+
 # Create Checkpoint JSONs
 if file_info["checkpoints JSON"] == False:
     i = 0
@@ -93,9 +93,21 @@ updateJSON(main_json_file, "checkpoints JSON", True)
 Split file into parts
 """
 
-splitvideo(file, main_json_file)
+splitVideo(main_json_file)
 
-# Process Checkpoints
+"""
+Process Checkpoints
+"""
+
+# Split Checkpoints into Frames
+
+splitCheckpoints(main_json_file)
+
+# Create examples from first frame
+#modelExamples(main_json_file)
+
+# Upscale Frames
+upscaleFrames(main_json_file)
 
 # Merge Checkpoints
 
