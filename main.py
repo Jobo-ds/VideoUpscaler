@@ -111,6 +111,7 @@ splitCheckpoints(main_json_file)
 upscaleFrames(main_json_file)
 
 # Merge Checkpoints
+compileVideo(main_json_file)
 
 # Quality Testing
 
