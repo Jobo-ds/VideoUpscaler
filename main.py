@@ -80,7 +80,7 @@ file_info = loadJSON(main_json_file)
 if file_info["checkpoints JSON"] == False:
     i = 0
     while i < file_info["checkpoints"]:
-        checkpoint_number = str(i).zfill(3)
+        checkpoint_number = str(i).zfill(8)
         checkpoint_json_file = checkpoint_folder + "/" + checkpoint_number + ".json"
         with open(checkpoint_json_file, 'w', encoding='utf-8') as outfile:
             json_dict = checkpointJson()

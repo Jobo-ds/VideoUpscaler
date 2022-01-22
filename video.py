@@ -11,6 +11,7 @@ from os import path
 import time
 import shutil
 from datetime import datetime, timedelta
+import math
 
 
 """
@@ -118,7 +119,7 @@ def splitVideo(main_json_file):
         i = 0
         if checkpoint_duration != False:
             while i < checkpoints:
-                checkpoint_number = str(i).zfill(3)
+                checkpoint_number = str(i).zfill(8)
                 checkpoint_json = loadJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json")
                 if not checkpoint_json["split video"]:
                     video = ffmpeg.input(folder + "/" + file_info["file_id"] + file_info["file type"])
@@ -136,8 +137,8 @@ def splitVideo(main_json_file):
                 updateJSON(folder + "/checkpoints/" + checkpoint_number + ".json", "split video", True)
                 print("Video successfully split into checkpoints.")
         else:
-            shutil.copy(folder + "/" + file_info["file_id"] + file_info["file type"], folder + "/" + "checkpoints/000" + file_info["file type"])
-            updateJSON(folder + "/checkpoints/" + "000" + ".json", "split video", True)
+            shutil.copy(folder + "/" + file_info["file_id"] + file_info["file type"], folder + "/" + "checkpoints/00000000" + file_info["file type"])
+            updateJSON(folder + "/checkpoints/" + "00000000" + ".json", "split video", True)
             print("Video successfully split into checkpoints.")
         updateJSON(main_json_file, "checkpoints video split", True)
     else:
@@ -152,9 +153,10 @@ def splitCheckpoints(main_json_file):
     if not file_info["checkpoints frame split"]:
         i = 0
         while i < file_info["checkpoints"]:
-            checkpoint_number = str(i).zfill(3)
+            checkpoint_number = str(i).zfill(8)
             file = file_info["folder"] + "/checkpoints/" + checkpoint_number + file_info["file type"]
             checkpoint_info = loadJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json")
+            filename_length = 10
             if not checkpoint_info["split frames"]:
                 video = cv2.VideoCapture(file)
                 frameNr = 0
@@ -164,12 +166,12 @@ def splitCheckpoints(main_json_file):
                     if success:
                         if not path.exists(file_info["folder"] + "/checkpoints/" + checkpoint_number):
                             os.makedirs(file_info["folder"] + "/checkpoints/" + checkpoint_number, exist_ok=False)
-                        cv2.imwrite(file_info["folder"] + "/checkpoints/" + checkpoint_number + "/" + str(frameNr) + ".jpg", frame)
+                        cv2.imwrite(file_info["folder"] + "/checkpoints/" + checkpoint_number + "/" + str(frameNr).zfill(filename_length) + ".jpg", frame)
                     else:
                         break
                     frameNr = frameNr + 1
                 updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "split frames", True)
-                updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "frames", frameNr-1)
+                updateJSON(file_info["folder"] + "/checkpoints/" + checkpoint_number + ".json", "frames", frameNr)
             else:
                 print(f"Checkpoint {checkpoint_number} already split into frames.")
             i = i + 1
@@ -187,41 +189,41 @@ Perform Cleaning of frames
 Perform Upscaling of cleaned frames
 """
 
-# Create examples of available models.
-def modelExamples(main_json_file):
-    models = os.listdir("models")
-    file_info = loadJSON(main_json_file)
-    folder = file_info["folder"] + "/" + "checkpoints"
-    for model in models:
-        i = 0
-        checkpoint_number = str(i).zfill(3)
-        frameNr = 1
-        frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg")
-        scale = model[-4:-3]
-        modelName = str(model[:-6]).lower()
-        if not path.exists(folder + "/" + checkpoint_number + "/" + "Examples/"):
-            os.makedirs(folder + "/" + checkpoint_number + "/" + "Examples/", exist_ok=False)
-        # Create simple resizes for comparison
-        if not path.exists(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-comparison-" + model[:-3] + ".jpg"):
-            img = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg", cv2.IMREAD_UNCHANGED)
-            width = int(img.shape[1] * int(scale)*100 / 100)
-            height = int(img.shape[0] * int(scale)*100 / 100)
-            dim = (width, height)
-            resized_img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-            cv2.imwrite(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-comparison-x" + str(scale) + ".jpg", resized_img)
-        # Run Model
-        print(f"Using model : {model} (x{scale})")
-        sr = dnn_superres.DnnSuperResImpl_create()
-        modelPath = "models/" + model
-        sr.readModel(modelPath)
-        sr.setModel(modelName, int(scale))
-        if not path.exists(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-upscale-" + model[:-3] + ".jpg"):
-            start = time.perf_counter()
-            result = sr.upsample(frame)
-            cv2.imwrite(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-upscale-" + model[:-3] + ".jpg", result)
-            end = time.perf_counter()
-            process_time = end - start
-            print(f"Process time: {process_time} seconds")
+# Create examples of available models. BROKEN
+# def modelExamples(main_json_file):
+#     models = os.listdir("models")
+#     file_info = loadJSON(main_json_file)
+#     folder = file_info["folder"] + "/" + "checkpoints"
+#     for model in models:
+#         i = 0
+#         checkpoint_number = str(i).zfill(8)
+#         frameNr = 1
+#         frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg")
+#         scale = model[-4:-3]
+#         modelName = str(model[:-6]).lower()
+#         if not path.exists(folder + "/" + checkpoint_number + "/" + "Examples/"):
+#             os.makedirs(folder + "/" + checkpoint_number + "/" + "Examples/", exist_ok=False)
+#         # Create simple resizes for comparison
+#         if not path.exists(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-comparison-" + model[:-3] + ".jpg"):
+#             img = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg", cv2.IMREAD_UNCHANGED)
+#             width = int(img.shape[1] * int(scale)*100 / 100)
+#             height = int(img.shape[0] * int(scale)*100 / 100)
+#             dim = (width, height)
+#             resized_img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+#             cv2.imwrite(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-comparison-x" + str(scale) + ".jpg", resized_img)
+#         # Run Model
+#         print(f"Using model : {model} (x{scale})")
+#         sr = dnn_superres.DnnSuperResImpl_create()
+#         modelPath = "models/" + model
+#         sr.readModel(modelPath)
+#         sr.setModel(modelName, int(scale))
+#         if not path.exists(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-upscale-" + model[:-3] + ".jpg"):
+#             start = time.perf_counter()
+#             result = sr.upsample(frame)
+#             cv2.imwrite(folder + "/" + checkpoint_number + "/" + "Examples/" + str(frameNr) + "-upscale-" + model[:-3] + ".jpg", result)
+#             end = time.perf_counter()
+#             process_time = end - start
+#             print(f"Process time: {process_time} seconds")
 
 
 def upscaleFrames(main_json_file):
@@ -243,15 +245,16 @@ def upscaleFrames(main_json_file):
         print(f"Upscaling with model : {model} (x{scale})")
         i = 0
         while i < checkpoints_total:
-            checkpoint_number = str(i).zfill(3)
+            checkpoint_number = str(i).zfill(8)
             checkpoint_info = loadJSON(folder + "/" + checkpoint_number + ".json")
+            filename_length = 10
             if checkpoint_info["upscale"] == False:
                 frameNr = 0
                 update_gui = True
                 avg_process_time_list = []
-                while frameNr <= checkpoint_info["frames"]:
+                while frameNr < checkpoint_info["frames"]:
                     # Check if frame has already been processed
-                    if not path.exists(folder + "/" + checkpoint_number + "/" + str(frameNr) + "-upscale.jpg"):
+                    if not path.exists(folder + "/" + checkpoint_number + "/" + "upscaled/" + str(frameNr).zfill(filename_length) + "-upscale.jpg"):
                         if update_gui:
                             now = datetime.now()
                             current_time = now.strftime("%H:%M:%S")
@@ -271,10 +274,10 @@ def upscaleFrames(main_json_file):
                             os.makedirs(folder + "/" + checkpoint_number, exist_ok=False)
                         if not path.exists(folder + "/" + checkpoint_number + "/upscaled"):
                             os.makedirs(folder + "/" + checkpoint_number + "/upscaled", exist_ok=False)
-                        frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr) + ".jpg")
+                        frame = cv2.imread(folder + "/" + checkpoint_number + "/" + str(frameNr).zfill(filename_length) + ".jpg")
                         if frameNr % 10 == 0: start = time.perf_counter()
                         result = sr.upsample(frame)
-                        cv2.imwrite(folder + "/" + checkpoint_number + "/upscaled/" + str(frameNr) + "-upscale.jpg", result)
+                        cv2.imwrite(folder + "/" + checkpoint_number + "/upscaled/" + str(frameNr).zfill(filename_length) + "-upscale.jpg", result)
                         if frameNr % 10 == 0: end = time.perf_counter()
                         if frameNr % 10 == 0: avg_process_time_list.append(float(end)-float(start))
                         if frameNr % 49 == 0: update_gui = True
@@ -296,13 +299,30 @@ def compileVideo(main_json_file):
         folder = file_info["folder"]
         i = 0
         while i < checkpoints:
-            checkpoint_number = str(i).zfill(3)
-            list_test = str(folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/0-upscale.jpg, " +
-                         folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/1-upscale.jpg")
-            video = ffmpeg.input(list_test, pattern_type="glob", framerate = 30)
-            video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
-            ffmpeg.run(video)
-            updateJSON(folder + "/" + "checkpoints/" + checkpoint_number + ".json", "merge", True)
+            checkpoint_number = str(i).zfill(8)
+            frames = os.listdir(folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/")
+            input_frames = []
+            for frame in frames:
+                img = cv2.imread(frames)
+                height, width, layers = frame.shape
+                size = (width, height)
+                input_frames.append(frame)
+            output_path = folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"]
+            output = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
+            for i in range(len(input_frames)):
+                output.write(input_frames[i])
+            output.release()
+
+
+
+
+
+            # list_test = str(folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/0-upscale.jpg, " +
+            #              folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/1-upscale.jpg")
+            # video = ffmpeg.input(list_test, pattern_type="glob", framerate = 30)
+            # video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
+            # ffmpeg.run(video)
+            # updateJSON(folder + "/" + "checkpoints/" + checkpoint_number + ".json", "merge", True)
         updateJSON(main_json_file, "checkpoints video merge", True)
     else:
         print("All checkpoints have already been merged into upscaled video files...")
