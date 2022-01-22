@@ -182,8 +182,8 @@ def splitCheckpoints(main_json_file):
 """
 Perform Cleaning of frames
 """
-
-# Update Checkpoint JSON
+def testCleaning(main_json_file):
+    #Media
 
 """
 Perform Upscaling of cleaned frames
@@ -301,29 +301,18 @@ def compileVideo(main_json_file):
         while i < checkpoints:
             checkpoint_number = str(i).zfill(8)
             frames = os.listdir(folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/")
-            input_frames = []
-            for frame in frames:
-                img = cv2.imread(frames)
-                height, width, layers = frame.shape
-                size = (width, height)
-                input_frames.append(frame)
-            output_path = folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"]
-            output = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
-            for i in range(len(input_frames)):
-                output.write(input_frames[i])
-            output.release()
-
-
-
-
-
-            # list_test = str(folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/0-upscale.jpg, " +
-            #              folder + "/" + "checkpoints/" + checkpoint_number + "/upscaled/1-upscale.jpg")
-            # video = ffmpeg.input(list_test, pattern_type="glob", framerate = 30)
-            # video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
-            # ffmpeg.run(video)
+            # This sucks, but its late.
+            with open(folder + "/" + "checkpoints/" + "temp_list.txt", 'w') as f:
+                file_path = checkpoint_number + "/upscaled/"
+                for item in frames:
+                    f.write("file " + file_path + "%s\n" % item)
+            list_path = folder + "/" + "checkpoints/" + "/temp_list.txt"
+            video = ffmpeg.input(list_path, r='30', f='concat', safe='0')
+            video = ffmpeg.output(video, folder + "/" + "checkpoints/" + checkpoint_number + "-upscaled" + file_info["file type"])
+            ffmpeg.run(video)
             # updateJSON(folder + "/" + "checkpoints/" + checkpoint_number + ".json", "merge", True)
-        updateJSON(main_json_file, "checkpoints video merge", True)
+            i = i + 1
+        #updateJSON(main_json_file, "checkpoints video merge", True)
     else:
         print("All checkpoints have already been merged into upscaled video files...")
 
