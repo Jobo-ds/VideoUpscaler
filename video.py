@@ -12,6 +12,8 @@ import time
 import shutil
 from datetime import datetime, timedelta
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 """
@@ -182,8 +184,63 @@ def splitCheckpoints(main_json_file):
 """
 Perform Cleaning of frames
 """
-def testCleaning(main_json_file):
-    #Media
+
+def compare_image(image1, image2, modifiction):
+  plt.figure(figsize=(9,9))
+  plt.subplot(1,2,1)
+  plt.imshow(image1)
+  plt.title('Orignal')
+  plt.axis('off')
+  plt.subplot(1,2,2)
+  plt.imshow(image2)
+  plt.title(str(modifiction))
+  plt.axis('off')
+  plt.tight_layout()
+  plt.show()
+
+def exampleClean(main_json_file):
+    file_info = loadJSON(main_json_file)
+    folder = file_info["folder"] + "/" + "checkpoints"
+    checkpoint_number = "00000000"
+    frameNr = 1
+    frameNr = str(frameNr).zfill(10)
+    frame_path = folder + "/" + checkpoint_number + "/" + frameNr + ".jpg"
+
+    # Original frame
+    img = cv2.imread(frame_path)
+    img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+
+    # 2D Convolution
+    # kernel = np.ones((10, 10), np.float32) / 100
+    # cnv = cv2.filter2D(img, -1, kernel)
+    # compare_image(img, cnv, "2D Convolution")
+    #
+    # # Blur
+    # blur = cv2.blur(img, (10, 10))
+    # compare_image(img, blur, "Blur")
+    #
+    # # Median Filtering
+    # median = cv2.medianBlur(img, 5)
+    # compare_image(img, median, "Median Filter")
+
+    # Sharpening with kernel
+    kernel1 = np.array([[0, -1, 0],
+                       [-1, 5, -1],
+                       [0, -1, 0]])
+    kernel2 = np.array([[-1, -1, -1],
+                       [-1, 9, -1],
+                       [-1, -1, -1]])
+    image_sharp1 = cv2.filter2D(src=img, ddepth=-1, kernel=kernel1)
+    image_sharp2 = cv2.filter2D(src=img, ddepth=-1, kernel=kernel2)
+    compare_image(img, image_sharp1, "Sharpened")
+
+
+
+
+    # # Median filtering
+    # median = cv2.medianBlur(noise_img, 5)
+    # compare_image(noise_img, median)
+
 
 """
 Perform Upscaling of cleaned frames
