@@ -53,6 +53,9 @@ file_info = loadJSON(main_json_file)
 
 """
 Create Checkpoints
+
+File is split into "checkpoints" to allow for easier stopping and returning of processing,
+as well as redoing part of the process. 
 """
 
 # Calculate number of checkpoints
@@ -94,33 +97,22 @@ updateJSON(main_json_file, "checkpoints JSON", True)
 Split file into parts
 """
 
-#splitVideo(main_json_file)
+splitVideo(main_json_file)
 
 """
 Process Checkpoints
 """
-
 # Split Checkpoints into Frames
-
-#splitCheckpoints(main_json_file)
+splitCheckpoints(main_json_file)
 
 # Clean frames
+cleanFrames(main_json_file)
 
-# Examples
-exampleClean(main_json_file)
-
-# Actual cleaning
-
-# Upscaling
-
-# Examples
-#modelExamples(main_json_file)
-
-# Actual Upscaling
-#upscaleFrames(main_json_file)
+# Upscale Frames
+upscaleFrames(main_json_file)
 
 # Merge Checkpoints
-#compileVideo(main_json_file)
+compileVideo(main_json_file)
 
 # Quality Testing
 
