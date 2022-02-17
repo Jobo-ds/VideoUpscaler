@@ -1,16 +1,13 @@
 """
 Imports
 """
-import os
-from os import path
-import random
-import shutil
 import hashlib
-import cv2
 import math
 
-
 from video import *
+from segments import *
+from scenes import *
+from json_methods import *
 
 """
 Setup Process of file
@@ -31,9 +28,9 @@ file_id = str(hashlib.md5(file.encode()).hexdigest())
 input_folder = "input/" + file_id
 if not path.exists(input_folder):
     os.makedirs(input_folder, exist_ok=False)
-checkpoint_folder = input_folder + "/" + "checkpoints"
-if not path.exists(checkpoint_folder):
-    os.makedirs(checkpoint_folder, exist_ok=False)
+segment_folder = input_folder + "/" + "segments"
+if not path.exists(segment_folder):
+    os.makedirs(segment_folder, exist_ok=False)
 output_folder = "output/" + file_id
 if not path.exists(output_folder):
     os.makedirs(output_folder, exist_ok=False)
@@ -52,46 +49,46 @@ if not path.exists(main_json_file):
 file_info = loadJSON(main_json_file)
 
 """
-Create Checkpoints
+Create Segments
 
-File is split into "checkpoints" to allow for easier stopping and returning of processing,
+File is split into "segments" to allow for easier stopping and returning of processing,
 as well as redoing part of the process. 
 """
 
-# Calculate number of checkpoints
-if file_info["checkpoints"] == 0:
+# Calculate number of segments
+if file_info["segments"] == 0:
     if file_info["duration"] <= 120: # 2 minutes
-        updateJSON(main_json_file, "checkpoints", 1)
-        updateJSON(main_json_file, "avg checkpoint duration", False) # If there is only one checkpoint it's False. Allows for specific treatment.
-        print("Very short file detected (< 1 min.). Only using 1 checkpoint.")
+        updateJSON(main_json_file, "segments", 1)
+        updateJSON(main_json_file, "avg segment duration", False) # If there is only one segment it's False. Allows for specific treatment.
+        print("Very short file detected (< 1 min.). Only using 1 segment.")
     elif file_info["duration"] <= 600: # 10 minutes
-        avg_checkpointDuration = 120
-        checkpoints = math.ceil(file_info["duration"] / avg_checkpointDuration)
-        updateJSON(main_json_file, "checkpoints", checkpoints)
-        updateJSON(main_json_file, "avg checkpoint duration", 120)
-        print(f"Short file detected (< 10 min.). Using {checkpoints} checkpoints.")
+        avg_segmentDuration = 120
+        segments = math.ceil(file_info["duration"] / avg_segmentDuration)
+        updateJSON(main_json_file, "segments", segments)
+        updateJSON(main_json_file, "avg segment duration", 120)
+        print(f"Short file detected (< 10 min.). Using {segments} segments.")
     else:
-        avg_checkpointDuration = 300
-        checkpoints = math.ceil(file_info["duration"] / avg_checkpointDuration)
-        updateJSON(main_json_file, "checkpoints", checkpoints)
-        updateJSON(main_json_file, "avg checkpoint duration", 300)
-        print(f"Long file detected (> 10 min.). Using {checkpoints} checkpoints.")
+        avg_segmentDuration = 300
+        segments = math.ceil(file_info["duration"] / avg_segmentDuration)
+        updateJSON(main_json_file, "segments", segments)
+        updateJSON(main_json_file, "avg segment duration", 300)
+        print(f"Long file detected (> 10 min.). Using {segments} segments.")
 
 file_info = loadJSON(main_json_file)
 
-# Create Checkpoint JSONs
-if file_info["checkpoints JSON"] == False:
+# Create Segment JSONs
+if file_info["segments JSON"] == False:
     i = 0
-    while i < file_info["checkpoints"]:
-        checkpoint_number = str(i).zfill(8)
-        checkpoint_json_file = checkpoint_folder + "/" + checkpoint_number + ".json"
-        with open(checkpoint_json_file, 'w', encoding='utf-8') as outfile:
-            json_dict = checkpointJson()
+    while i < file_info["segments"]:
+        segment_number = str(i).zfill(8)
+        segment_json_file = segment_folder + "/" + segment_number + ".json"
+        with open(segment_json_file, 'w', encoding='utf-8') as outfile:
+            json_dict = segmentJson()
             json.dump(json_dict, outfile, indent=4, ensure_ascii=False)
         i = i + 1
 
 # Update main JSON
-updateJSON(main_json_file, "checkpoints JSON", True)
+updateJSON(main_json_file, "segments JSON", True)
 
 """
 Split file into parts
@@ -100,19 +97,22 @@ Split file into parts
 splitVideo(main_json_file)
 
 """
-Process Checkpoints
+Process Segments
 """
-# Split Checkpoints into Frames
-splitCheckpoints(main_json_file)
+# Split Segments into Frames
+splitSegments(main_json_file)
 
-# Clean frames
-cleanFrames(main_json_file)
+# Split Segments into Scenes
+findScenes(main_json_file)
 
-# Upscale Frames
-upscaleFrames(main_json_file)
-
-# Merge Checkpoints
-compileVideo(main_json_file)
+# # Clean frames
+# cleanFrames(main_json_file)
+#
+# # Upscale Frames
+# upscaleFrames(main_json_file)
+#
+# # Merge Segments
+# compileVideo(main_json_file)
 
 # Quality Testing
 
